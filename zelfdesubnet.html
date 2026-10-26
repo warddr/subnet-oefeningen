@@ -93,7 +93,7 @@ function newExercise(){
 
   document.getElementById('question').innerHTML = dotted
     ? `Het IP-adres <span class="mono">${intToIp(a)}</span> met subnetmasker <span class="mono">${state.maskDD}</span> ligt in hetzelfde subnet als het IP-adres <span class="mono">${intToIp(b)}</span>.`
-    : `Het IP-adres <span class="mono">${intToIp(a)}/${prefix}</span> ligt in hetzelfde subnet als het IP-adres <span class="mono">${intToIp(b)}</span>.`;
+    : `Het IP-adres <span class="mono">${intToIp(a)}/${prefix}</span> ligt in hetzelfde subnet als het IP-adres <span class="mono">${intToIp(b)}/${prefix}</span>.`;
   document.querySelectorAll('input[name="answer"]').forEach(r=>r.checked=false);
   resetChoices();
   hideFeedback();
