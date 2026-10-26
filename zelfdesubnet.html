@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zelfde subnet? – Oefenpagina</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Zelfde subnet?</h1>
+      <span class="tag">waar / niet waar</span>
+    </header>
+    <nav class="tabs">
+      <a href="index.html">Overzicht</a>
+      <a href="nwbroadcasthosts.html">Netwerk &amp; broadcast</a>
+      <a href="zelfdesubnet.html" aria-current="page">Zelfde subnet?</a>
+      <a href="cidrmasker.html">CIDR ↔ masker</a>
+      <a href="ipv6.html">IPv6 inkorten</a>
+    </nav>
+    <div class="grid">
+      <section class="card">
+        <div class="muted">Waar of niet waar?</div>
+        <div class="question" id="question">—</div>
+
+        <div class="btns">
+          <button class="primary" id="new">Nieuwe oefening ↻</button>
+          <button id="check" class="good">Nakijken ✓</button>
+          <button id="solution" class="bad">Toon oplossing</button>
+          <button id="explain">Uitleg tonen</button>
+        </div>
+
+        <div class="choices" role="radiogroup" aria-label="Antwoord">
+          <label class="choice" id="lbl-true"><input type="radio" name="answer" value="true" /> Waar</label>
+          <label class="choice" id="lbl-false"><input type="radio" name="answer" value="false" /> Niet waar</label>
+        </div>
+
+        <div id="feedback" style="margin-top:14px; display:none;" class="result"></div>
+        <details id="details" style="margin-top:14px; display:none;">
+          <summary>Stap-voor-stap uitleg (binair)</summary>
+          <div id="explanation" class="steps" style="margin-top:10px; font-size:14px; line-height:1.6"></div>
+        </details>
+      </section>
+
+      <aside class="card">
+        <h3 style="margin-top:0">Uitleg</h3>
+        <p class="muted">Twee IP-adressen liggen in hetzelfde subnet als ze met het gegeven masker hetzelfde netwerkadres hebben.</p>
+        <ul class="muted">
+          <li>Kies <b>Waar</b> of <b>Niet waar</b> en druk op nakijken.</li>
+          <li>Het masker staat soms als 255.255.240.0 en soms als /20: oefen beide.</li>
+          <li>Als je echt vast zit kan je op "Uitleg tonen" of "Toon oplossing" klikken, dan krijg je de binaire uitwerking.</li>
+          <li>Je kan een nieuwe oefening proberen door op "Nieuwe oefening" te klikken.</li>
+        </ul>
+      </aside>
+    </div>
+
+    <div class="footer">©Ward De Ridder - AP Hogeschool</div>
+  </div>
+
+<script src="common.js"></script>
+<script>
+// ---------- Exercise generation ----------
+function okFirstOctet(i){const o=(i>>>24)&255; return o>=1 && o<=223 && o!==127;}
+function randomNetwork(prefix){
+  // netwerkadres in 1.0.0.0 – 223.255.255.255, zonder 127.x.x.x
+  let ip;
+  do { ip=randInt(1,223)*2**24 + randInt(0,0xFFFFFF); } while(!okFirstOctet(ip));
+  return (ip & cidrToMaskInt(prefix))>>>0;
+}
+
+let state=null;
+function newExercise(){
+  const prefix=randInt(8,30);
+  const maskInt=cidrToMaskInt(prefix);
+  const size=2**(32-prefix);
+  const netA=randomNetwork(prefix);
+  const a=netA+randInt(1,size-2);
+  const same=Math.random()<0.5;
+  let netB=netA;
+  if(!same){
+    // een naburig subnet: lijkt sterk op A, maar netwerkadres verschilt
+    const k=Math.random()<0.7?1:randInt(2,3);
+    const cands=[netA+k*size, netA-k*size].filter(n=>n>=0 && n+size<=2**32 && okFirstOctet(n) && okFirstOctet(n+size-1));
+    if(!cands.length) return newExercise();
+    netB=pick(cands);
+  }
+  let b;
+  do { b=netB+randInt(1,size-2); } while(b===a);
+  const dotted=Math.random()<0.7;
+  state={a,b,prefix,maskInt,maskDD:maskIntToDotted(maskInt),netA,netB,
+         bcA:(netA+size-1)>>>0,bcB:(netB+size-1)>>>0,same,dotted};
+
+  document.getElementById('question').innerHTML = dotted
+    ? `Het IP-adres <span class="mono">${intToIp(a)}</span> met subnetmasker <span class="mono">${state.maskDD}</span> ligt in hetzelfde subnet als het IP-adres <span class="mono">${intToIp(b)}</span>.`
+    : `Het IP-adres <span class="mono">${intToIp(a)}/${prefix}</span> ligt in hetzelfde subnet als het IP-adres <span class="mono">${intToIp(b)}</span>.`;
+  document.querySelectorAll('input[name="answer"]').forEach(r=>r.checked=false);
+  resetChoices();
+  hideFeedback();
+}
+
+function resetChoices(){ ['lbl-true','lbl-false'].forEach(id=>mark(document.getElementById(id),'reset')); }
+function selected(){
+  const r=document.querySelector('input[name="answer"]:checked');
+  return r ? r.value==='true' : null;
+}
+function answerText(v){ return v ? 'Waar' : 'Niet waar'; }
+function reason(){
+  return state.same
+    ? `Beide adressen hebben netwerkadres <span class="mono">${intToIp(state.netA)}</span>.`
+    : `Netwerkadres van ${intToIp(state.a)} is <span class="mono">${intToIp(state.netA)}</span>, van ${intToIp(state.b)} is het <span class="mono">${intToIp(state.netB)}</span>.`;
+}
+
+function check(){
+  resetChoices();
+  const ans=selected();
+  if(ans===null){
+    showFeedback(`⚠️ <span class="muted">Kies eerst <b>Waar</b> of <b>Niet waar</b>.</span>`);
+    return;
+  }
+  const ok=(ans===state.same);
+  mark(document.getElementById(ans?'lbl-true':'lbl-false'), ok?'ok':'bad');
+  showFeedback(ok
+    ? `✅ <span class="ok">Juist!</span> <span class="muted">${reason()}</span>`
+    : `❌ <span class="no">Niet juist.</span> <span class="muted">Bereken voor beide adressen het netwerkadres, of klik op "Uitleg tonen".</span>`);
+}
+
+function showSolution(){
+  document.querySelector(`input[name="answer"][value="${state.same}"]`).checked=true;
+  resetChoices();
+  mark(document.getElementById(state.same?'lbl-true':'lbl-false'),'ok');
+  explain();
+  showFeedback(`ℹ️ Oplossing: <b>${answerText(state.same)}</b>. Zie binaire uitwerking hieronder.`);
+}
+
+function explain(){
+  const {a,b,prefix:pfx,maskInt,netA,netB}=state;
+  const diff=((a^b)&maskInt)>>>0;
+  const oA=ipIntToOctets(a), oB=ipIntToOctets(b);
+
+  let step2;
+  if(pfx%8===0){
+    const n=pfx/8;
+    step2=`Het masker valt precies op een octetgrens: de eerste ${n} octet${n>1?'ten':''} vormen het netwerkdeel.
+      Vergelijk die: <span class="mono">${oA.slice(0,n).join('.')}</span> en <span class="mono">${oB.slice(0,n).join('.')}</span>
+      zijn ${state.same?'gelijk':'<b>verschillend</b>'}.`;
+  } else {
+    const k=Math.floor(pfx/8);
+    const mOct=ipIntToOctets(maskInt)[k];
+    const block=256-mOct;
+    const sA=Math.floor(oA[k]/block)*block, sB=Math.floor(oB[k]/block)*block;
+    const starts=[]; for(let s=0; s<256 && starts.length<4; s+=block) starts.push(s);
+    const before = k===0 ? '' :
+      ` De octetten ervóór (<span class="mono">${oA.slice(0,k).join('.')}</span> en <span class="mono">${oB.slice(0,k).join('.')}</span>) moeten ook gelijk zijn${
+        oA.slice(0,k).join('.')===oB.slice(0,k).join('.') ? ' en dat zijn ze.' : ', maar dat zijn ze <b>niet</b>.'}`;
+    step2=`Het ${k+1}e octet is het "interessante" octet (masker ${mOct}). Blokgrootte = 256 − ${mOct} = <b>${block}</b>,
+      dus de subnetten beginnen in dat octet bij ${starts.join(', ')}${4*block<256?', …':''}.<br>
+      ${intToIp(a)}: ${oA[k]} valt in het blok <b>${sA}–${sA+block-1}</b>.<br>
+      ${intToIp(b)}: ${oB[k]} valt in het blok <b>${sB}–${sB+block-1}</b>.${before}`;
+  }
+
+  const html=`
+    <p><b>Stap 1 – masker.</b> ${state.dotted
+      ? `${state.maskDD} = <span class="mono">/${pfx}</span>: de eerste ${pfx} bits zijn het netwerkdeel.`
+      : `/${pfx} = <span class="mono">${state.maskDD}</span>: de eerste ${pfx} bits zijn het netwerkdeel.`}</p>
+    <p><b>Stap 2 – snelle methode (blokgrootte).</b> ${step2}</p>
+    <p><b>Stap 3 – netwerkadres = IP AND masker.</b> Blauw = netwerkbits, oranje = hostbits${diff?', <span style="background:rgba(239,68,68,.45)">rood</span> = netwerkbit die verschilt':''}.</p>
+    <div class="scroll"><table class="bits">
+      <tr><th></th><th>1e octet</th><th>2e</th><th>3e</th><th>4e</th></tr>
+      ${rowBits(intToIp(a), ipIntToBin(a), pfx, diff)}
+      ${rowBits(intToIp(b), ipIntToBin(b), pfx, diff)}
+      ${rowBits('Masker', ipIntToBin(maskInt), pfx)}
+      ${rowBits('Netwerk A', ipIntToBin(netA), pfx, diff)}
+      ${rowBits('Netwerk B', ipIntToBin(netB), pfx, diff)}
+      <tr><td class="mono">Netwerk A (dec)</td><td colspan="4" class="mono">${intToIp(netA)} — broadcast ${intToIp(state.bcA)}</td></tr>
+      <tr><td class="mono">Netwerk B (dec)</td><td colspan="4" class="mono">${intToIp(netB)} — broadcast ${intToIp(state.bcB)}</td></tr>
+    </table></div>
+    <p style="margin-top:12px"><b>Besluit.</b> Het subnet van ${intToIp(a)} loopt van ${intToIp(netA)} tot ${intToIp(state.bcA)}.
+      ${intToIp(b)} ligt ${state.same?'':'<b>niet</b> '}in dat bereik → <b class="${state.same?'ok':'no'}">${answerText(state.same)}</b>.</p>`;
+  openDetails(html);
+}
+
+// ---------- wire up ----------
+document.getElementById('new').addEventListener('click', newExercise);
+document.getElementById('check').addEventListener('click', check);
+document.getElementById('solution').addEventListener('click', showSolution);
+document.getElementById('explain').addEventListener('click', explain);
+document.querySelectorAll('input[name="answer"]').forEach(r=>{
+  r.addEventListener('change', resetChoices);
+  r.addEventListener('keydown', e=>{ if(e.key==='Enter') check(); });
+});
+
+// init
+newExercise();
+</script>
+</body>
+</html>

@@ -4,57 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>IPv4 Subnet Oefenpagina</title>
-  <style>
-    :root {
-      --bg: #0f172a; --panel: #111827ee; --ink: #e5e7eb; --muted: #94a3b8;
-      --accent: #22c55e; --danger: #ef4444; --warn: #f59e0b; --card: #0b1220; --chip: #1f2937;
-      --net: #1f6feb; --host: #f59e0b;
-    }
-    html,body { height:100%; }
-    body {
-      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, 'Helvetica Neue', Arial, 'Noto Sans';
-      background: radial-gradient(1200px 600px at 80% -10%, #1f2937, transparent),
-                  radial-gradient(800px 500px at -10% 110%, #1f2937, transparent), var(--bg);
-      color: var(--ink); display: grid; place-items: start center; padding: 28px 16px 64px; }
-    .wrap { max-width: 1080px; width: 100%; }
-    header { display:flex; gap:16px; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    h1 { font-size: clamp(20px, 4vw, 34px); margin: 0; letter-spacing: .4px; }
-    .tag { background: var(--chip); color: var(--ink); padding: 6px 10px; border-radius: 999px; font-size: 12px; border: 1px solid #2b3648; }
-    .card { background: linear-gradient(180deg, #0d1220, #0a0f1a); border: 1px solid #1f2937; border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px #00000066; }
-    .grid { display:grid; grid-template-columns: 1fr; gap: 16px; }
-    @media (min-width: 980px){ .grid { grid-template-columns: 1.2fr .8fr; } }
-    .row { display:flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-    .pill { background: var(--chip); border:1px solid #2b3648; padding: 8px 12px; border-radius: 12px; }
-    .given { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 18px; }
-    .muted { color: var(--muted); }
-    .inputs { display:grid; grid-template-columns: 1fr; gap: 12px; }
-    @media (min-width: 680px){ .inputs { grid-template-columns: 1fr 1fr; }}
-    label { font-size: 12px; color: var(--muted); display:block; margin-bottom: 6px; }
-    input[type="text"], input[type="number"] { width: 100%; box-sizing: border-box; background: var(--card); color: var(--ink);
-      border: 2px solid #263244; border-radius: 10px; padding: 12px; font-size: 15px; outline: none; transition: border-color .16s ease; }
-    input:focus { border-color: #3b82f6; }
-    .btns { display:flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
-    button { background: #111827; color: var(--ink); border: 1px solid #263244; border-radius: 12px; padding: 10px 14px; font-size: 14px; cursor: pointer; }
-    button.primary { background: #1b2a42; border-color: #35507c; }
-    button.good { background: #0c2d19; border-color: #197a42; }
-    button.bad { background: #3a1313; border-color: #7a1c1c; }
-    .result { padding: 10px 12px; border-radius: 10px; border:1px solid #223049; background: #0c1324; }
-    .ok { color: var(--accent); } .no { color: var(--danger); } .slim { font-size: 13px; }
-    .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
-    details { border: 1px dashed #2b3648; border-radius: 12px; padding: 10px 12px; }
-    summary { cursor: pointer; color: var(--muted); }
-    .footer { margin-top: 20px; font-size: 12px; color: var(--muted); text-align: center; }
-    .chip { padding: 4px 8px; border-radius: 999px; background: #0b1220; border: 1px solid #223049; font-size: 12px; }
-
-    table.bits { width:100%; border-collapse: collapse; margin-top:10px; }
-    table.bits th, table.bits td { border:1px solid #223049; padding:6px 8px; text-align:center; }
-    table.bits th { background:#0b1220; color: var(--muted); font-weight:600; }
-    .octcell { font-family: ui-monospace, Menlo, Consolas, monospace; }
-    .b { display:inline-block; width: 0.75ch; text-align:center; }
-    .gap { display:inline-block; width: 0.4ch; }
-    .nbit { background-color: rgba(31,111,235,.22); }
-    .hbit { background-color: rgba(245,158,11,.22); }
-  </style>
+  <link rel="stylesheet" href="common.css" />
 </head>
 <body>
   <div class="wrap">
@@ -62,6 +12,13 @@
       <h1>IPv4 Subnet Oefenpagina</h1>
       <span class="tag">binaire uitleg + oplossing</span>
     </header>
+    <nav class="tabs">
+      <a href="index.html">Overzicht</a>
+      <a href="nwbroadcasthosts.html" aria-current="page">Netwerk &amp; broadcast</a>
+      <a href="zelfdesubnet.html">Zelfde subnet?</a>
+      <a href="cidrmasker.html">CIDR ↔ masker</a>
+      <a href="ipv6.html">IPv6 inkorten</a>
+    </nav>
     <div class="grid">
       <section class="card">
         <div class="row" style="justify-content: space-between; align-items: start;">
@@ -127,18 +84,8 @@
     <div class="footer">©Ward De Ridder - AP Hogeschool</div>
   </div>
 
+<script src="common.js"></script>
 <script>
-// ---------- IPv4 helpers ----------
-function ipToInt(ip){
-  const p = ip.split('.').map(Number);
-  if(p.length!==4 || p.some(n=>!Number.isInteger(n)||n<0||n>255)) return null;
-  return ((p[0]<<24)>>>0) + (p[1]<<16) + (p[2]<<8) + p[3];
-}
-function intToIp(i){return[(i>>>24)&255,(i>>>16)&255,(i>>>8)&255,i&255].join('.');}
-function to8bit(n){return n.toString(2).padStart(8,'0');}
-function ipIntToBin(i){return[(i>>>24)&255,(i>>>16)&255,(i>>>8)&255,i&255].map(to8bit);}
-function cidrToMaskInt(c){return c===0?0:(0xFFFFFFFF<<(32-c))>>>0;}
-function maskIntToDotted(m){return intToIp(m);}
 function classify(ipInt){
   const o1=(ipInt>>>24)&255,o2=(ipInt>>>16)&255;
   let cls=(o1<=127)?'Class A':(o1<=191)?'Class B':(o1<=223)?'Class C':(o1<=239)?'Multicast':'Reserved';
@@ -147,8 +94,6 @@ function classify(ipInt){
 }
 
 // ---------- Exercise generation ----------
-function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
-function pick(a){return a[Math.floor(Math.random()*a.length)];}
 function randomPrivateIp(){const r=pick(['10','172','192']);if(r==='10')return[10,randInt(0,255),randInt(0,255),randInt(1,254)].join('.');if(r==='172')return[172,randInt(16,31),randInt(0,255),randInt(1,254)].join('.');return[192,168,randInt(0,255),randInt(1,254)].join('.');}
 
 let state=null;
@@ -174,13 +119,6 @@ function newExercise(){
   ['inp-network','inp-broadcast','inp-first','inp-last','inp-hosts'].forEach(id=>{const el=document.getElementById(id);el.value=''; el.style.borderColor='#263244';});
   document.getElementById('feedback').style.display='none';
   document.getElementById('details').style.display='none';
-}
-
-function mark(el, status){
-  // status: 'ok' | 'bad' | 'empty'
-  if(status==='ok') el.style.borderColor = '#22c55e';
-  else if(status==='empty') el.style.borderColor = '#f59e0b';
-  else el.style.borderColor = '#ef4444';
 }
 
 function check(){
@@ -227,31 +165,13 @@ function showSolution(){
   fb.innerHTML=`ℹ️ Oplossing ingevuld. Zie binaire uitwerking hieronder.`;
 }
 
-// ---- Binaire tabel helpers ----
-function bitCell(bit, idxGlobal, prefix){
-  const cls=(idxGlobal<prefix)?'nbit':'hbit';
-  return `<span class="b ${cls}">${bit}</span>` + (idxGlobal%4===3 && idxGlobal%8!==7 ? `<span class="gap"></span>` : '');
-}
-function octetCell(bitsStr, octIndex, prefix){
-  let html='';
-  for(let bi=0; bi<8; bi++){
-    const gi=octIndex*8+bi;
-    html += bitCell(bitsStr[bi], gi, prefix);
-  }
-  return `<td class="octcell">${html}</td>`;
-}
-function rowBits(label, octetsBits, prefix){
-  return `<tr><td><span class="mono">${label}</span></td>` +
-    octetsBits.map((b,i)=>octetCell(b,i,prefix)).join('') + `</tr>`;
-}
-
 function explain(){
   const pfx=state.prefix;
   const ipBits=ipIntToBin(state.ipInt);
   const maskBits=ipIntToBin(state.maskInt);
   const netBits=ipIntToBin(state.network);
   const brdBits=ipIntToBin(state.broadcast);
-  let html=`<table class="bits">
+  let html=`<div class="scroll"><table class="bits">
     <tr><th></th><th>1e octet</th><th>2e</th><th>3e</th><th>4e</th></tr>
     ${rowBits('IP', ipBits, pfx)}
     ${rowBits('Masker', maskBits, pfx)}
@@ -262,7 +182,7 @@ function explain(){
     ${pfx>=31? `<tr><td class="mono">Hosts bruikbaar</td><td colspan="4" class="mono">0 (/${pfx})</td></tr>`
               : `<tr><td class="mono">Eerste / laatste host</td><td colspan="4" class="mono">${intToIp(state.first)} — ${intToIp(state.last)}</td></tr>
                  <tr><td class="mono">Hosts bruikbaar</td><td colspan="4" class="mono">${state.usable} (2^{${32-pfx}} − 2)</td></tr>`}
-  </table>`;
+  </table></div>`;
   document.getElementById('explanation').innerHTML=html;
   const det=document.getElementById('details'); det.style.display='block'; det.open=true;
 }

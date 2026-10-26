@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IPv6 inkorten – Oefenpagina</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>IPv6 inkorten</h1>
+      <span class="tag">zo kort mogelijk ⇄ voluit</span>
+    </header>
+    <nav class="tabs">
+      <a href="index.html">Overzicht</a>
+      <a href="nwbroadcasthosts.html">Netwerk &amp; broadcast</a>
+      <a href="zelfdesubnet.html">Zelfde subnet?</a>
+      <a href="cidrmasker.html">CIDR ↔ masker</a>
+      <a href="ipv6.html" aria-current="page">IPv6 inkorten</a>
+    </nav>
+    <div class="grid">
+      <section class="card">
+        <div class="row" style="justify-content: space-between; align-items: start;">
+          <div class="muted" id="instruction">Schrijf dit IPv6-adres zo kort mogelijk:</div>
+          <div class="modes" id="modes" role="group" aria-label="Soort oefening">
+            <button data-mode="short" aria-pressed="true">Inkorten</button>
+            <button data-mode="full" aria-pressed="false">Voluit schrijven</button>
+            <button data-mode="mixed" aria-pressed="false">Gemengd</button>
+          </div>
+        </div>
+        <div class="given" id="given" style="margin-top:8px; overflow-wrap:anywhere">—</div>
+
+        <div class="btns">
+          <button class="primary" id="new">Nieuwe oefening ↻</button>
+          <button id="check" class="good">Nakijken ✓</button>
+          <button id="solution" class="bad">Toon oplossing</button>
+          <button id="explain">Uitleg tonen</button>
+        </div>
+
+        <div>
+          <label for="inp-answer">Jouw antwoord</label>
+          <input type="text" id="inp-answer" class="mono" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        </div>
+
+        <div id="feedback" style="margin-top:14px; display:none;" class="result"></div>
+        <details id="details" style="margin-top:14px; display:none;">
+          <summary>Stap-voor-stap uitleg</summary>
+          <div id="explanation" class="steps" style="margin-top:10px; font-size:14px; line-height:1.6"></div>
+        </details>
+      </section>
+
+      <aside class="card">
+        <h3 style="margin-top:0">Uitleg</h3>
+        <p class="muted">Een IPv6-adres heeft 8 groepen van 4 hexadecimale cijfers. Je mag het op 2 manieren inkorten:</p>
+        <ul class="muted">
+          <li><b>Regel 1:</b> voorloopnullen in een groep weglaten (<span class="mono">0db8</span> → <span class="mono">db8</span>, <span class="mono">0000</span> → <span class="mono">0</span>).</li>
+          <li><b>Regel 2:</b> één reeks opeenvolgende nul-groepen vervangen door <span class="mono">::</span> (maar één keer per adres).</li>
+          <li>Als je denkt dat je het juist hebt kan je jezelf controleren door op nakijken te drukken (of Enter).</li>
+          <li>Als je echt vast zit kan je op "Uitleg tonen" of "Toon oplossing" klikken, dan krijg je meer info.</li>
+        </ul>
+      </aside>
+    </div>
+
+    <div class="footer">©Ward De Ridder - AP Hogeschool</div>
+  </div>
+
+<script src="common.js"></script>
+<script>
+const inp=document.getElementById('inp-answer');
+let mode='short';
+let state=null;
+
+// ---------- IPv6 helpers ----------
+function hex4(n){return n.toString(16).padStart(4,'0');}
+function zeroRuns(groups){
+  const runs=[];
+  for(let i=0;i<8;){
+    if(groups[i]===0){ let j=i; while(j<8 && groups[j]===0) j++; runs.push({start:i,len:j-i}); i=j; }
+    else i++;
+  }
+  return runs;
+}
+// langste reeks(en) van minstens 2 nul-groepen; meer dan één bij gelijke lengte
+function longestRuns(groups){
+  const runs=zeroRuns(groups).filter(r=>r.len>=2);
+  const max=Math.max(0,...runs.map(r=>r.len));
+  return runs.filter(r=>r.len===max);
+}
+function compress(groups, run){
+  const h=groups.map(g=>g.toString(16));
+  if(!run) return h.join(':');
+  return h.slice(0,run.start).join(':') + '::' + h.slice(run.start+run.len).join(':');
+}
+// alle even korte schrijfwijzen; de eerste is die volgens RFC 5952 (linkse reeks)
+function shortestForms(groups){
+  const lr=longestRuns(groups);
+  return lr.length ? lr.map(r=>compress(groups,r)) : [compress(groups,null)];
+}
+function fullForm(groups){return groups.map(hex4).join(':');}
+function sameGroups(a,b){return a.every((g,i)=>g===b[i]);}
+
+function parseIPv6(str){
+  const s=str.trim().toLowerCase();
+  if(/[^0-9a-f:]/.test(s)) return {error:'Alleen hexadecimale cijfers (0–9, a–f) en dubbele punten zijn toegelaten.'};
+  if(s.includes(':::')) return {error:'Drie dubbele punten na elkaar (<span class="mono">:::</span>) bestaat niet.'};
+  const dbl=s.split('::').length-1;
+  if(dbl>1) return {error:'Je mag <span class="mono">::</span> maar één keer gebruiken, anders weet je niet hoeveel nul-groepen er bij elke <span class="mono">::</span> horen.'};
+  let parts, run=null;
+  if(dbl===1){
+    const [l,r]=s.split('::');
+    const left=l===''?[]:l.split(':'), right=r===''?[]:r.split(':');
+    const n=left.length+right.length;
+    if(n>7) return {error:`Met <span class="mono">::</span> moeten er minder dan 8 groepen overblijven (jij hebt er ${n}).`};
+    run={start:left.length, len:8-n};
+    parts=[...left, ...Array(8-n).fill(null), ...right];
+  } else {
+    parts=s.split(':');
+    if(parts.length!==8) return {error:`Zonder <span class="mono">::</span> heb je precies 8 groepen nodig (jij hebt er ${parts.length}).`};
+  }
+  for(const p of parts){
+    if(p==='') return {error:'Er staat een lege groep in: een enkele <span class="mono">:</span> te veel aan het begin of einde?'};
+    if(p!==null && p.length>4) return {error:`De groep <span class="mono">${p}</span> heeft meer dan 4 hex-cijfers.`};
+  }
+  return {groups:parts.map(p=>p===null?0:parseInt(p,16)), parts, run};
+}
+
+// ---------- Exercise generation ----------
+function randGroup(){
+  const r=Math.random();
+  if(r<0.30) return randInt(0x1000,0xffff);
+  if(r<0.55) return randInt(0x100,0xfff);
+  if(r<0.73) return randInt(0x10,0xff);
+  if(r<0.86) return randInt(1,0xf);
+  // nullen achteraan: die mag je níet weglaten
+  return pick([0x1000,0xa000,0x0100,0x0d00,0x0010,0x00a0,0xab00,0x2000,0x0c00,0x00f0]);
+}
+function genGroups(){
+  for(;;){
+    const g=Array.from({length:8},randGroup);
+    const L=pick([2,2,3,3,3,4,4,5,6]);
+    const s=randInt(0,8-L);
+    for(let i=s;i<s+L;i++) g[i]=0;
+    for(let i=0;i<8;i++) if(Math.random()<0.18) g[i]=0;
+    if(g[0]!==0 && Math.random()<0.6){
+      g[0]=pick([0x2001,0x2001,0x2a02,0x2a01,0x2c0f,0xfe80,0xfd00+randInt(0,255),0xff02]);
+      if(g[0]===0x2001 && g[1]!==0 && Math.random()<0.6) g[1]=0x0db8;
+    }
+    const lr=longestRuns(g);
+    if(!lr.length) continue;                          // altijd een reeks van ≥ 2 nul-groepen
+    if(lr.length>1 && Math.random()<0.75) continue;   // gelijke reeksen: af en toe
+    if(g.filter(x=>x!==0).length<2) continue;
+    return g;
+  }
+}
+
+function newExercise(){
+  const dir = mode==='mixed' ? pick(['short','full']) : mode;
+  const groups=genGroups();
+  state={dir,groups,full:fullForm(groups),forms:shortestForms(groups)};
+  document.getElementById('instruction').textContent = dir==='short'
+    ? 'Schrijf dit IPv6-adres zo kort mogelijk:'
+    : 'Schrijf dit IPv6-adres voluit (8 groepen van 4 hex-cijfers):';
+  document.getElementById('given').textContent = dir==='short' ? state.full : state.forms[0];
+  inp.placeholder = dir==='short' ? 'bv. 2001:db8::1' : 'bv. 2001:0db8:0000:0000:0000:0000:0000:0001';
+  inp.value=''; mark(inp,'reset');
+  hideFeedback();
+  inp.focus();
+}
+
+// ---------- feedback ----------
+function groupTable(rows){
+  // rows: [{label, cells:[html,...], cls:[...]}]
+  return `<div class="scroll"><table class="bits">
+    <tr><th></th>${[1,2,3,4,5,6,7,8].map(n=>`<th>${n}</th>`).join('')}</tr>
+    ${rows.map(r=>`<tr><td class="mono lbl">${r.label}</td>${r.cells.map((c,i)=>`<td class="mono ${(r.cls||[])[i]||''}">${c}</td>`).join('')}</tr>`).join('')}
+  </table></div>`;
+}
+function compareWith(userGroups, parts){
+  const cls=userGroups.map((g,i)=>g===state.groups[i]?'':'diff');
+  const hints=[];
+  // nullen achteraan weggelaten? (ab00 → ab)
+  parts.forEach((p,i)=>{
+    if(p===null || userGroups[i]===state.groups[i]) return;
+    const orig=state.groups[i].toString(16), u=p.replace(/^0+(?=.)/,'');
+    if(orig!==u && orig.startsWith(u) && /^0+$/.test(orig.slice(u.length)))
+      hints.push(`Groep ${i+1}: <span class="mono">${hex4(state.groups[i])}</span> mag je niet inkorten tot <span class="mono">${p}</span>. Alleen de nullen <b>vooraan</b> mogen weg, niet die achteraan.`);
+  });
+  return `<p style="margin:8px 0 0" class="muted">Jouw antwoord voluit, vergeleken met het juiste adres (rood = verschilt):</p>` +
+    groupTable([
+      {label:'Jouw antwoord', cells:userGroups.map(hex4), cls},
+      {label:'Juist', cells:state.groups.map(hex4)}
+    ]) + (hints.length ? `<ul class="hints muted">${hints.map(h=>`<li>${h}</li>`).join('')}</ul>` : '');
+}
+
+function check(){
+  const v=inp.value.trim();
+  if(v===''){ mark(inp,'empty'); showFeedback(`⚠️ <span class="muted">Vul eerst een antwoord in.</span>`); return; }
+  const r=parseIPv6(v);
+  if(r.error){ mark(inp,'bad'); showFeedback(`❌ <span class="no">Geen geldig IPv6-adres.</span> <span class="muted">${r.error}</span>`); return; }
+  if(!sameGroups(r.groups,state.groups)){
+    mark(inp,'bad');
+    showFeedback(`❌ <span class="no">Dat is een ander adres.</span>` + compareWith(r.groups, r.parts));
+    return;
+  }
+  if(state.dir==='short') checkShort(v.toLowerCase(), r, v!==v.toLowerCase());
+  else checkFull(r);
+}
+
+function checkShort(lc, r, upper){
+  const extra=[];
+  if(upper) extra.push('Tip: volgens RFC 5952 schrijf je IPv6-adressen in kleine letters.');
+  if(state.forms.includes(lc)){
+    if(lc!==state.forms[0]) extra.push(`Er zijn twee even lange reeksen nul-groepen, dus dit is ook zo kort mogelijk. Afspraak (RFC 5952): kies de eerste reeks → <span class="mono">${state.forms[0]}</span>.`);
+    mark(inp,'ok');
+    showFeedback(`✅ <span class="ok">Helemaal juist!</span>` + (extra.length ? `<ul class="hints muted">${extra.map(h=>`<li>${h}</li>`).join('')}</ul>` : ''));
+    return;
+  }
+  const hints=[];
+  const lead=r.parts.map((p,i)=>({p,i})).filter(({p})=>p!==null && p.length>1 && p[0]==='0');
+  if(lead.length) hints.push(`Regel 1 – voorloopnullen weglaten: ${lead.map(({p})=>`<span class="mono">${p}</span> → <span class="mono">${p.replace(/^0+(?=.)/,'')}</span>`).join(', ')}.`);
+  const best=longestRuns(state.groups)[0];
+  const where=`groep ${best.start+1} t.e.m. ${best.start+best.len}`;
+  if(!r.run) hints.push(`Regel 2 – vervang de langste reeks nul-groepen (${where}) door <span class="mono">::</span>.`);
+  else if(r.run.len<best.len) hints.push(`Regel 2 – jouw <span class="mono">::</span> vervangt maar ${r.run.len} nul-groep${r.run.len>1?'en':''}. De langste reeks is ${best.len} groepen lang (${where}): zet <span class="mono">::</span> daar en laat al die nullen weg.`);
+  if(!hints.length) hints.push('Vergelijk je antwoord met de uitleg.');
+  showFeedback(`❌ <span class="no">Juist adres, maar het kan nog korter.</span>` +
+    `<ul class="hints muted">${[...hints,...extra].map(h=>`<li>${h}</li>`).join('')}</ul>`);
+  mark(inp,'bad');
+}
+
+function checkFull(r){
+  const hints=[];
+  if(r.run) hints.push(`Gebruik geen <span class="mono">::</span>: schrijf alle 8 groepen uit (ook de nul-groepen als <span class="mono">0000</span>).`);
+  const short=r.parts.filter(p=>p!==null && p.length<4);
+  if(short.length) hints.push(`Elke groep moet 4 hex-cijfers hebben, vul aan met voorloopnullen: ${short.map(p=>`<span class="mono">${p}</span> → <span class="mono">${p.padStart(4,'0')}</span>`).join(', ')}.`);
+  if(!hints.length){ mark(inp,'ok'); showFeedback(`✅ <span class="ok">Helemaal juist!</span>`); return; }
+  mark(inp,'bad');
+  showFeedback(`❌ <span class="no">Juist adres, maar nog niet helemaal voluit geschreven.</span><ul class="hints muted">${hints.map(h=>`<li>${h}</li>`).join('')}</ul>`);
+}
+
+function showSolution(){
+  inp.value = state.dir==='short' ? state.forms[0] : state.full;
+  mark(inp,'ok');
+  explain();
+  showFeedback(`ℹ️ Oplossing ingevuld. Zie uitwerking hieronder.`);
+}
+
+// ---------- uitleg ----------
+function stripped(g){
+  // 00a0 → <s>00</s>a0 ; 0000 → <s>000</s>0
+  const h=hex4(g), keep=g.toString(16).length;
+  return (4-keep ? `<span class="strip">${h.slice(0,4-keep)}</span>` : '') + h.slice(4-keep);
+}
+function explain(){
+  const g=state.groups;
+  const runs=longestRuns(g), best=runs[0];
+  const inRun=i=>i>=best.start && i<best.start+best.len;
+  const zeroCls=g.map((x,i)=>inRun(i)?'zrun':'');
+  const step2Cells=[], step2Cls=[];
+  for(let i=0;i<8;i++){
+    if(i===best.start){ step2Cells.push('::'); step2Cls.push('zrun'); }
+    else if(inRun(i)){ step2Cells.push(''); step2Cls.push('zrun'); }
+    else { step2Cells.push(g[i].toString(16)); step2Cls.push(''); }
+  }
+  const otherZero=zeroRuns(g).filter(r=>r.start!==best.start);
+  const tie=runs.length>1;
+
+  let html;
+  if(state.dir==='short'){
+    html=`
+      <p><b>Regel 1 – voorloopnullen weglaten.</b> In elke groep mag je de nullen <i>vooraan</i> weglaten (doorstreept).
+        Nullen achteraan blijven staan: <span class="mono">ab00</span> blijft <span class="mono">ab00</span>. Een groep <span class="mono">0000</span> wordt <span class="mono">0</span>.</p>
+      <p><b>Regel 2 – <span class="mono">::</span></b> Eén reeks opeenvolgende nul-groepen mag je vervangen door <span class="mono">::</span>.
+        Dat mag maar één keer, dus kies je de <b>langste</b> reeks: hier groep ${best.start+1} t.e.m. ${best.start+best.len} (${best.len} groepen, groen).
+        ${tie ? `Er zijn ${runs.length} even lange reeksen: dan kies je volgens RFC 5952 de eerste.` : ''}
+        ${otherZero.length ? `Andere nul-groepen schrijf je gewoon als <span class="mono">0</span>.` : ''}</p>
+      ${groupTable([
+        {label:'Voluit', cells:g.map(hex4), cls:zeroCls},
+        {label:'Regel 1', cells:g.map(stripped), cls:zeroCls},
+        {label:'Regel 2', cells:step2Cells, cls:step2Cls}
+      ])}
+      <p style="margin-top:12px"><b>Resultaat:</b> <span class="mono answer">${state.forms[0]}</span></p>`;
+  } else {
+    const given=state.forms[0];
+    const [l,r]=given.split('::');
+    const nl=l===''?0:l.split(':').length, nr=r===''?0:r.split(':').length;
+    html=`
+      <p><b>Stap 1 – :: terugzetten.</b> Links van <span class="mono">::</span> staan ${nl} groep${nl===1?'':'en'}, rechts ${nr}: samen ${nl+nr}.
+        Een IPv6-adres heeft altijd 8 groepen, dus <span class="mono">::</span> staat voor 8 − ${nl+nr} = <b>${8-nl-nr}</b> nul-groepen (groen).</p>
+      <p><b>Stap 2 – aanvullen tot 4 cijfers.</b> Zet voor elke groep voorloopnullen tot ze 4 hex-cijfers heeft (<span class="mono">db8</span> → <span class="mono">0db8</span>, <span class="mono">0</span> → <span class="mono">0000</span>).</p>
+      ${groupTable([
+        {label:'Ingekort', cells:step2Cells, cls:step2Cls},
+        {label:'Stap 1', cells:g.map(x=>x.toString(16)), cls:zeroCls},
+        {label:'Stap 2', cells:g.map(hex4), cls:zeroCls}
+      ])}
+      <p style="margin-top:12px"><b>Resultaat:</b> <span class="mono answer">${state.full}</span></p>`;
+  }
+  openDetails(html);
+}
+
+// ---------- wire up ----------
+setupModes(document.getElementById('modes'), m=>{ mode=m; newExercise(); });
+document.getElementById('new').addEventListener('click', newExercise);
+document.getElementById('check').addEventListener('click', check);
+document.getElementById('solution').addEventListener('click', showSolution);
+document.getElementById('explain').addEventListener('click', explain);
+inp.addEventListener('keydown', e=>{ if(e.key==='Enter') check(); });
+
+// init
+newExercise();
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Netwerk Oefeningen</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Netwerk Oefeningen</h1>
+      <span class="tag">IPv4 + IPv6</span>
+    </header>
+    <nav class="tabs">
+      <a href="index.html" aria-current="page">Overzicht</a>
+      <a href="nwbroadcasthosts.html">Netwerk &amp; broadcast</a>
+      <a href="zelfdesubnet.html">Zelfde subnet?</a>
+      <a href="cidrmasker.html">CIDR ↔ masker</a>
+      <a href="ipv6.html">IPv6 inkorten</a>
+    </nav>
+
+    <p class="muted" style="margin:0 0 16px">Kies een oefening. Elke oefening wordt willekeurig gegenereerd, je kan jezelf laten nakijken en als je vast zit krijg je een stap-voor-stap uitleg.</p>
+
+    <div class="cards">
+      <a class="card exercise" href="nwbroadcasthosts.html">
+        <div class="row"><span class="chip">IPv4</span></div>
+        <h2>Netwerk, broadcast &amp; hosts</h2>
+        <p class="muted">Bereken netwerkadres, broadcastadres, eerste en laatste bruikbare host en het aantal hosts.</p>
+        <div class="example mono">IP: 192.168.37.130 / 26</div>
+        <span class="go">Start oefening →</span>
+      </a>
+      <a class="card exercise" href="zelfdesubnet.html">
+        <div class="row"><span class="chip">IPv4</span></div>
+        <h2>Zelfde subnet?</h2>
+        <p class="muted">Waar of niet waar: liggen twee IP-adressen met het gegeven masker in hetzelfde subnet?</p>
+        <div class="example">Het IP-adres <span class="mono">106.95.176.227</span> met subnetmasker <span class="mono">255.255.0.0</span> ligt in hetzelfde subnet als het IP-adres <span class="mono">106.96.0.3</span>.</div>
+        <span class="go">Start oefening →</span>
+      </a>
+      <a class="card exercise" href="cidrmasker.html">
+        <div class="row"><span class="chip">IPv4</span></div>
+        <h2>CIDR ↔ subnetmasker</h2>
+        <p class="muted">Wissel tussen de twee notaties van een subnetmasker, in beide richtingen.</p>
+        <div class="example">Zet <span class="mono">/11</span> om naar subnetmasker · Zet <span class="mono">255.255.240.0</span> om naar CIDR</div>
+        <span class="go">Start oefening →</span>
+      </a>
+      <a class="card exercise" href="ipv6.html">
+        <div class="row"><span class="chip">IPv6</span></div>
+        <h2>IPv6 inkorten</h2>
+        <p class="muted">Schrijf een IPv6-adres zo kort mogelijk, of schrijf een ingekort adres terug voluit.</p>
+        <div class="example mono">2001:0db8:0000:0000:0000:ff00:0042:8329 → 2001:db8::ff00:42:8329</div>
+        <span class="go">Start oefening →</span>
+      </a>
+    </div>
+
+    <div class="footer">©Ward De Ridder - AP Hogeschool</div>
+  </div>
+</body>
+</html>
